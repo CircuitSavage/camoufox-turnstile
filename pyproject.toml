@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "camoufox-turnstile"
+version = "0.1.0"
+description = "Solve Cloudflare Turnstile in Camoufox by handing the sitekey to the Peak API and injecting the token."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Peak" }]
+keywords = [
+    "camoufox",
+    "cloudflare",
+    "turnstile",
+    "captcha",
+    "solver",
+    "bypass",
+    "web-scraping",
+    "anti-detect",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = []
+
+[project.optional-dependencies]
+camoufox = ["camoufox[geoip]>=0.4"]
+dev = ["pytest>=7"]
+
+[project.urls]
+Source = "https://github.com/CircuitSavage/camoufox-turnstile"
+Homepage = "https://peak.fo/?utm_source=github&utm_medium=pypi&utm_campaign=packages&utm_content=camoufox-turnstile"
+Documentation = "https://peak.fo/docs/turnstile?utm_source=github&utm_medium=pypi&utm_campaign=packages&utm_content=camoufox-turnstile"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/camoufox_turnstile"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "README.md", "LICENSE", "examples", "tests"]
