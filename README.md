@@ -23,9 +23,11 @@ So when the native pass stalls, this reads the sitekey, sends it to Peak, and in
 ## Install
 
 ```bash
-pip install camoufox-turnstile camoufox[geoip]
+pip install "camoufox-turnstile @ git+https://github.com/CircuitSavage/camoufox-turnstile" "camoufox[geoip]"
 python -m camoufox fetch   # one-time: pull the patched Firefox build
 ```
+
+Install from the repo, not from `pip install camoufox-turnstile`. That name on PyPI belongs to an unrelated project (a YOLO-based solver by Builker Labs) which also uses the `camoufox_turnstile` import name, so keep only one of the two installed.
 
 The package itself has no runtime dependencies — it drives the Camoufox page you already have. `camoufox` is the browser you run it against.
 
