@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "camoufox-turnstile"
-version = "0.1.0"
+version = "0.1.1"
 description = "Solve Cloudflare Turnstile in Camoufox by handing the sitekey to the Peak API and injecting the token."
 readme = "README.md"
 requires-python = ">=3.9"
