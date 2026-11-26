@@ -1,5 +1,5 @@
 <a href="https://peak.fo/?utm_source=github&utm_medium=readme&utm_campaign=packages&utm_content=camoufox-turnstile">
-  <img src="https://raw.githubusercontent.com/CircuitSavage/camoufox-turnstile/main/assets/peak-banner.png" alt="Peak — solve Cloudflare Turnstile and the 5s challenge in about a second" width="100%">
+  <img src="https://raw.githubusercontent.com/CircuitSavage/camoufox-turnstile/main/assets/peak-banner.png" alt="Peak: solve Cloudflare Turnstile and the 5s challenge" width="100%">
 </a>
 
 # camoufox-turnstile
@@ -29,7 +29,7 @@ python -m camoufox fetch   # one-time: pull the patched Firefox build
 
 Install from the repo, not from `pip install camoufox-turnstile`. That name on PyPI belongs to an unrelated project (a YOLO-based solver by Builker Labs) which also uses the `camoufox_turnstile` import name, so keep only one of the two installed.
 
-The package itself has no runtime dependencies — it drives the Camoufox page you already have. `camoufox` is the browser you run it against.
+The package itself has no runtime dependencies. It drives the Camoufox page you already have. `camoufox` is the browser you run it against.
 
 ## Quickstart
 
@@ -71,13 +71,13 @@ A full runnable script is in [`examples/camoufox_example.py`](./examples/camoufo
 
 Camoufox and Peak cover different failure modes. Use them together.
 
-- **Let Camoufox try first.** Launch with `humanize=True`, a real locale, and — for anything that matters — a residential or ISP proxy. A clean fingerprint on a residential IP clears most non-interactive widgets with no solve at all. `solve_turnstile` returns that free token when it finds one.
+- **Let Camoufox try first.** Launch with `humanize=True`, a real locale, and, for anything that matters, a residential or ISP proxy. A clean fingerprint on a residential IP clears most non-interactive widgets with no solve at all. `solve_turnstile` returns that free token when it finds one.
 - **Solve through Peak when it stalls.** Datacenter egress, a high-risk sitekey, or an aggressive site will hold the widget open no matter how good the browser is. That is the case Peak handles: it returns a token minted against the sitekey, independent of your browser session.
 - **Match the egress.** If you pass a `proxy` to Peak, use the same IP the browser goes out on. A token solved from one network and replayed from another is more likely to be rejected server-side.
 
 ## What it does not do
 
-- **Not the full-page interstitial.** The Cloudflare "Just a moment" page that gates a whole domain and sets `cf_clearance` is a different challenge from an embedded Turnstile widget. This package handles the widget — the one that renders a `cf-turnstile` element and a `cf-turnstile-response` field. For the interstitial, Peak has a separate `cloudflare5stask`; see the [docs](https://peak.fo/docs/turnstile?utm_source=github&utm_medium=readme&utm_campaign=packages&utm_content=camoufox-turnstile).
+- **Not the full-page interstitial.** The Cloudflare "Just a moment" page that gates a whole domain and sets `cf_clearance` is a different challenge from an embedded Turnstile widget. This package handles the widget, the one that renders a `cf-turnstile` element and a `cf-turnstile-response` field. For the interstitial, Peak has a separate `cloudflare5stask`; see the [docs](https://peak.fo/docs/turnstile?utm_source=github&utm_medium=readme&utm_campaign=packages&utm_content=camoufox-turnstile).
 - **Not reCAPTCHA or hCaptcha.** Turnstile only.
 - **No magic on a banned IP.** If the target has already blocked your IP range, get a better egress first. A valid token on a burned network still gets refused.
 
@@ -87,12 +87,12 @@ Camoufox and Peak cover different failure modes. Use them together.
 
 Get a valid Turnstile token onto a Camoufox `page` and inject it. Returns the token.
 
-- `page` — a Camoufox (Playwright async) `Page` on a Turnstile-gated URL.
-- `api_key` — Peak key (`pk_...`). Falls back to `PEAK_API_KEY`.
-- `proxy` — optional proxy handed to Peak, e.g. `http://user:pass@host:port`. Use the same egress as the browser.
-- `sitekey` — skip the DOM read and use this sitekey.
-- `timeout` — seconds to wait on Peak.
-- `use_existing` — if `True` (default), return a token Camoufox already earned instead of paying for a solve.
+- `page`: a Camoufox (Playwright async) `Page` on a Turnstile-gated URL.
+- `api_key`: Peak key (`pk_...`). Falls back to `PEAK_API_KEY`.
+- `proxy`: optional proxy handed to Peak, e.g. `http://user:pass@host:port`. Use the same egress as the browser.
+- `sitekey`: skip the DOM read and use this sitekey.
+- `timeout`: seconds to wait on Peak.
+- `use_existing`: if `True` (default), return a token Camoufox already earned instead of paying for a solve.
 
 ### `await read_sitekey(page)`
 
@@ -114,34 +114,39 @@ The raw, blocking Peak call, in case you want the token without a page. Returns 
 
 1. If `use_existing`, read `cf-turnstile-response`; a filled field means Camoufox already passed, so return that token and skip the solve.
 2. Read the sitekey from the widget, or scrape it from the Cloudflare iframe `src` when the widget rendered implicitly.
-3. Call Peak `POST https://api.peak.fo/solve` with `task_type: "turnstiletask"`, the `sitekey`, `url: page.url`, and your optional `proxy` — over `X-API-Key`. Peak returns `{"success": true, "data": {"token": "..."}}`.
+3. Call Peak `POST https://api.peak.fo/solve` with `task_type: "turnstiletask"`, the `sitekey`, `url: page.url`, and your optional `proxy`, authenticated with `X-API-Key`. Peak returns `{"success": true, "data": {"token": "..."}}`.
 4. Inject the token into every `cf-turnstile-response` field (creating a hidden input if the widget hasn't rendered one) and invoke the widget's `data-callback`, so the host page's success handler runs.
 
 The solve call blocks, so the async path runs it in a worker thread and never stalls the browser's event loop.
 
+## Troubleshooting
+
+The errors this package raises are strings you can grep for. Each one, and the three failures that show up after a solve, has a longer write-up on the Peak blog.
+
+- **`PeakError: No Turnstile sitekey on the page. Has the widget rendered yet?`** `read_sitekey` looked for `.cf-turnstile[data-sitekey]`, any `[data-sitekey]`, and the `challenges.cloudflare.com` iframe, and found none. The widget had not rendered when you called `solve_turnstile`, or the site builds it from a script after load. Wait for the `.cf-turnstile` element or the iframe, then call it, or pass `sitekey=` by hand. [How to find a Cloudflare Turnstile sitekey](https://blog.peak.fo/how-to-find-a-cloudflare-turnstile-sitekey/) shows the DevTools route and the places sites hide it.
+- **`PeakError: No Peak API key.`** Neither `api_key=` nor `PEAK_API_KEY` was set. Keys start with `pk_`; the free one comes from the [dashboard](https://peak.fo/?utm_source=github&utm_medium=readme&utm_campaign=packages&utm_content=camoufox-turnstile).
+- **`PeakError: Peak HTTP 403`.** Versions before commit `e0b9bb7` sent the solve call without a `User-Agent`, and Cloudflare in front of `api.peak.fo` refused it. Reinstall from the repo and the header is set for you.
+- **`solve_turnstile` returned a token but the page never reacted.** `inject_token` fills every `cf-turnstile-response` field and calls the widget's `data-callback`. If the site wires its success handler some other way (a `turnstile.render` callback kept in a closure, a framework state hook), the hidden input holds the token and you submit the form yourself. [cf-turnstile-response is empty](https://blog.peak.fo/cf-turnstile-response-empty/) covers the ordering mistakes behind an empty field, and [the cf-turnstile-response token explained](https://blog.peak.fo/the-cf-turnstile-response-token-explained/) covers what the server does with the token once it arrives.
+- **Camoufox passed the widget on its own, then the next request got a 403.** That is a different wall. A Turnstile token satisfies a widget on a form. A 403 interstitial wants a `cf_clearance` cookie from the 5-second challenge, which is Peak's `cloudflare5stask`, not this package. [Turnstile token vs cookie](https://blog.peak.fo/cloudflare-turnstile-token-vs-cookie/) tells the two apart, [Cloudflare Turnstile 403](https://blog.peak.fo/cloudflare-turnstile-403-scraper-fix/) walks through the fix, and [the Cloudflare 5-second challenge explained](https://blog.peak.fo/the-cloudflare-5-second-challenge-explained/) covers the interstitial itself.
+- **The widget shows an error code** such as 110200, 300030 or 600010. [Cloudflare Turnstile error codes](https://blog.peak.fo/cloudflare-turnstile-error-codes/) groups them by what failed, from a domain missing on the sitekey's allowlist to a challenge run that died inside the iframe.
+
+Two longer reads for this stack: [How to scrape Cloudflare-protected sites without getting blocked](https://blog.peak.fo/how-to-scrape-cloudflare-protected-sites-without-getting-blocked/) (also on [Hashnode](https://peakfo.hashnode.dev/how-to-scrape-cloudflare-protected-sites-without-getting-blocked)) covers the IP and fingerprint side that decides whether Camoufox passes on its own, and the [2026 Turnstile developer guide](https://blog.peak.fo/how-to-solve-cloudflare-turnstile-in-2026-dev-guide/) covers the token flow end to end.
+
 ## Powered by Peak
 
-This uses [Peak](https://peak.fo/?utm_source=github&utm_medium=readme&utm_campaign=packages&utm_content=camoufox-turnstile), a Cloudflare specialist that returns a Turnstile token in about a second.
+This uses [Peak](https://peak.fo/?utm_source=github&utm_medium=readme&utm_campaign=packages&utm_content=camoufox-turnstile), a solver built for Cloudflare Turnstile and the 5-second challenge.
 
-- **$0.90 per 1,000** successful Turnstile solves, down to **$0.35 at volume**.
-- **Pay only for successes** — a failed solve is not billed.
+- **[$0.90 per 1,000](https://peak.fo/?utm_source=github&utm_medium=readme&utm_campaign=packages&utm_content=camoufox-turnstile#pricing)** successful Turnstile solves, down to **$0.35 at volume**.
+- **Pay only for successes.** A failed solve is not billed.
 - **About 1,000 free solves** to start, no card.
 
 → [Get a free API key](https://peak.fo/?utm_source=github&utm_medium=readme&utm_campaign=packages&utm_content=camoufox-turnstile) · [Turnstile docs](https://peak.fo/docs/turnstile?utm_source=github&utm_medium=readme&utm_campaign=packages&utm_content=camoufox-turnstile)
 
-## Other Peak wrappers
+## Related
 
-Same solve, wired into other stacks:
+Same pattern for other stacks: [playwright-turnstile](https://github.com/CircuitSavage/playwright-turnstile) · [patchright-turnstile](https://github.com/CircuitSavage/patchright-turnstile) · [nodriver-turnstile](https://github.com/CircuitSavage/nodriver-turnstile) · [pydoll-turnstile](https://github.com/CircuitSavage/pydoll-turnstile) · [drissionpage-turnstile](https://github.com/CircuitSavage/drissionpage-turnstile) · [selenium-turnstile](https://github.com/CircuitSavage/selenium-turnstile) · [botasaurus-turnstile](https://github.com/CircuitSavage/botasaurus-turnstile) · [scrapling-turnstile](https://github.com/CircuitSavage/scrapling-turnstile) · [crawlee-turnstile](https://github.com/CircuitSavage/crawlee-turnstile) · [puppeteer-extra-plugin-turnstile](https://github.com/CircuitSavage/puppeteer-extra-plugin-turnstile) · [browser-use-turnstile](https://github.com/CircuitSavage/browser-use-turnstile) · [scrapy-turnstile](https://github.com/CircuitSavage/scrapy-turnstile) · [turnstile-curl](https://github.com/CircuitSavage/turnstile-curl) · [cloudscraper-turnstile](https://github.com/CircuitSavage/cloudscraper-turnstile) · [crawl4ai-turnstile](https://github.com/CircuitSavage/crawl4ai-turnstile). Full list in [awesome-turnstile-solvers](https://github.com/CircuitSavage/awesome-turnstile-solvers).
 
-- [playwright-turnstile](https://github.com/CircuitSavage/playwright-turnstile) — token injection for Playwright.
-- [selenium-turnstile](https://github.com/CircuitSavage/selenium-turnstile) — a valid token in Selenium, no physical click.
-- [scrapy-turnstile](https://github.com/CircuitSavage/scrapy-turnstile) — Scrapy middleware that keeps blocked spiders running.
-- [puppeteer-extra-plugin-turnstile](https://github.com/CircuitSavage/puppeteer-extra-plugin-turnstile) — a `puppeteer-extra` plugin.
-- [turnstile-curl](https://github.com/CircuitSavage/turnstile-curl) — solve from `curl_cffi`, no browser.
-- [cloudscraper-turnstile](https://github.com/CircuitSavage/cloudscraper-turnstile) — a `cloudscraper` drop-in.
-- [crawl4ai-turnstile](https://github.com/CircuitSavage/crawl4ai-turnstile) — Turnstile solving for Crawl4AI.
-
-More on the list: [awesome-turnstile-solvers](https://github.com/CircuitSavage/awesome-turnstile-solvers).
+If you want to know what the widget does before it hands out a token, [cloudflare-turnstile-reversed](https://github.com/CircuitSavage/cloudflare-turnstile-reversed) documents the challenge flow, the widget parameters and the fingerprinting it runs.
 
 ## Legitimate use
 
@@ -149,4 +154,4 @@ Built for automation, QA, and scraping public data. Respect each site's Terms of
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).
